@@ -63,10 +63,24 @@ function PANEL:Init()
 		self.HTML:Stop()
 		self.HTML:OpenURL( self.HomeURL )
 	end
+	self.HomeButton.DoRightClick = function()
+		local menu = DermaMenu() 
+		menu:AddOption("Advanced User Mode",function()
+			if (not RequestPanel.f) then CinemaResourceMonitor(RequestPanel) end
+		end)
+		menu:Open()
+	end
 	
 	self.AddressBar = vgui.Create( "DTextEntry", self )
 	self.AddressBar:Dock( FILL )
 	self.AddressBar:DockMargin( Spacing, Margins * 3, Spacing, Margins * 3 )
+	self.AddressBar.OnChange = function()
+		if theater.ExtractURLInfo( self.AddressBar:GetValue() ) then
+			self.RequestButton:SetDisabled( false )
+		else
+			self.RequestButton:SetDisabled( true )
+		end
+	end
 	self.AddressBar.OnEnter = function()
 		self.HTML:Stop()
 		self.HTML:OpenURL( self.AddressBar:GetValue() )
@@ -81,7 +95,7 @@ function PANEL:Init()
 	self.RequestButton:DockMargin( 8, 4, 8, 4 )
 	self.RequestButton.BackgroundColor = Color(123, 32, 29)
 	self.RequestButton.DoClick = function()
-		RequestVideoURL( self.HTML.URL )
+		RequestVideoURL( self.AddressBar:GetValue() )
 	end
 
 	self:SetHeight( ButtonSize + Margins * 2 )
@@ -109,14 +123,14 @@ function PANEL:SetHTML( html )
 	self.AddressBar:SetText( self.HomeURL )
 	self:UpdateHistory( self.HomeURL )
 	
-	self.HTML.OnFinishLoading = function( panel )
+	--[[self.HTML.OnFinishLoading = function( panel )
 
 		local url = self.HTML:GetURL()
-
+		
 		self.AddressBar:SetText( url )
 		self:FinishedLoading()
 	
-	end
+	end]]
 
 	self.HTML.OnURLChanged = function ( panel, url )
 

@@ -12,10 +12,8 @@ SERVICE.NeedsCodecs = true
 SERVICE.LivestreamCacheLife = 0
 
 function SERVICE:GetKey( url )
+	if (util.JSONToTable(url.encoded)) then return false end
 	if url.scheme == "rtmp" then return url.encoded end 
-	if string.sub( url.path, -5) == ".webm" or string.sub( url.path, -4) == ".mov" then
-		return url.encoded
-	end
 	if string.sub( url.path, -4) == ".mp4" then
 		if string.match( url.host, "dropbox.com" ) then
 			return "https://www.dropbox.com"..url.path.."?dl=1"
@@ -27,6 +25,7 @@ end
 
 if CLIENT then
 	function SERVICE:GetVideoInfoClientside(key, callback)
+		if (LocalPlayer().videoDebug and string.match(key,"dropbox.com")) then print("Dropbox Failsafe Activated") end
 		EmbeddedCheckCodecs(function()
 			vpanel = vgui.Create("DHTML")
 
@@ -45,7 +44,8 @@ if CLIENT then
 			end)
 
 			function vpanel:ConsoleMessage(msg)
-				if msg:StartWith("DURATION:") then
+				if (LocalPlayer().videoDebug) then print(msg) end
+				if (msg:StartWith("DURATION:") and msg != "DURATION:NaN") then
 					local duration = math.ceil(tonumber(string.sub(msg,10)))
 					if duration==0 then
 						duration=1
@@ -68,13 +68,15 @@ if CLIENT then
 					end
 				end
 			end
-				
-			local urll = "http://swampservers.net/cinema/filedata.php?file="
-			if string.StartWith(key:lower(), "rtmp") then
-				urll = "http://swampservers.net/cinema/filedatavjs.php?file="
-			end
 
-			vpanel:OpenURL( urll..key )
+			local urll = "http://swampservers.net/cinema/file.html"
+			--if string.StartWith(key:lower(), "rtmp") then
+			--	urll = "http://swampservers.net/cinema/filedatavjs.php?file="..key
+			--end
+
+			vpanel:OpenURL( urll )
+			vpanel:QueueJavascript( string.format( "th_video('%s');", string.JavascriptSafe(key) ) )
+			vpanel:QueueJavascript( "to_volume=0;setInterval(function(){console.log('DURATION:'+player.duration())},100);" )
 		end,
 		function()
 			chat.AddText("You need codecs to request this. Press F2.")
@@ -84,9 +86,9 @@ if CLIENT then
 	
 	function SERVICE:LoadVideo( Video, panel )
 		local urll = "http://swampservers.net/cinema/file.html"
-		if string.StartWith(Video:Key():lower(), "rtmp") then
-			urll = "http://swampservers.net/cinema/filevjs.html"
-		end
+		--if string.StartWith(Video:Key():lower(), "rtmp") then
+		--	urll = "http://swampservers.net/cinema/filevjs.html"
+		--end
 		panel:EnsureURL(urll)
 		
 		local cc = LocalPlayer():GetNetworkedString("cntry", "us")
@@ -97,11 +99,11 @@ if CLIENT then
 		else
 			cc="us"
 		end
- 
+		
 		local k = Video:Key()
 		
 		k = string.Replace(k, "relay.horatio.tube", cc..".horatio.tube")
-
+		
 		-- Let the webpage handle loading a video
 		local str = string.format( "th_video('%s');", string.JavascriptSafe(k) )
 		panel:QueueJavascript( str )
